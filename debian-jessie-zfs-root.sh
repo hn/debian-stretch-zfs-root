@@ -210,7 +210,7 @@ done
 
 debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $DIST /target http://http.debian.net/debian/
 
-NEWHOST=debian$(hostid)
+NEWHOST=debian-$(hostid)
 echo $NEWHOST >/target/etc/hostname
 sed -i "1s/^/127.0.1.1\t$NEWHOST\n/" /target/etc/hosts
 
