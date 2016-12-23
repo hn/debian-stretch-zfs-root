@@ -73,7 +73,8 @@ fi
 
 while read -r DISK; do
 	DISKS+=("${BYID[$DISK]}")
-	PARTITIONS+=("${BYID[$DISK]}-part$PARTZFS")
+	ZFSPARTITIONS+=("${BYID[$DISK]}-part$PARTZFS")
+	EFIPARTITIONS+=("${BYID[$DISK]}-part$PARTEFI")
 done < $TMPFILE
 
 whiptail --backtitle $0 --title "RAID level selection" --separate-output \
@@ -92,28 +93,28 @@ RAIDLEVEL=$(head -n1 $TMPFILE | tr [:upper:] [:lower:])
 
 case "$RAIDLEVEL" in
   raid0)
-	RAIDDEF="${PARTITIONS[*]}"
+	RAIDDEF="${ZFSPARTITIONS[*]}"
   	;;
   raid1)
-	if [ $((${#PARTITIONS[@]} % 2)) -ne 0 ]; then
-		echo "Need an even number of disks for RAID level '$RAIDLEVEL': ${PARTITIONS[@]}"
+	if [ $((${#ZFSPARTITIONS[@]} % 2)) -ne 0 ]; then
+		echo "Need an even number of disks for RAID level '$RAIDLEVEL': ${ZFSPARTITIONS[@]}"
 		exit 1
 	fi
 	I=0
-	for PARTITION in "${PARTITIONS[@]}"; do
+	for ZFSPARTITION in "${ZFSPARTITIONS[@]}"; do
 		if [ $(($I % 2)) -eq 0 ]; then
 			RAIDDEF+=" mirror"
 		fi
-		RAIDDEF+=" $PARTITION"
+		RAIDDEF+=" $ZFSPARTITION"
 		((I++))
 	done
   	;;
   *)
-	if [ ${#PARTITIONS[@]} -lt 3 ]; then
-		echo "Need at least 3 disks for RAID level '$RAIDLEVEL': ${PARTITIONS[@]}"
+	if [ ${#ZFSPARTITIONS[@]} -lt 3 ]; then
+		echo "Need at least 3 disks for RAID level '$RAIDLEVEL': ${ZFSPARTITIONS[@]}"
 		exit 1
 	fi
-	RAIDDEF="$RAIDLEVEL ${PARTITIONS[*]}"
+	RAIDDEF="$RAIDLEVEL ${ZFSPARTITIONS[*]}"
   	;;
 esac
 
@@ -145,7 +146,7 @@ udevadm trigger
 
 test -f /var/lib/apt/lists/http.debian.net_debian_dists_$DIST-backports_InRelease || apt-get update
 
-test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk zfs-dkms debootstrap
+test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk zfs-dkms debootstrap dosfstools
 
 test -d /proc/spl/kstat/zfs/$ZPOOL && zpool destroy $ZPOOL
 
@@ -192,6 +193,21 @@ mkswap -f /dev/zvol/$ZPOOL/swap
 zpool status
 zfs list
 
+# "This is arguably a mis-design in the UEFI specification - the ESP is a single point of failure on one disk."
+# https://wiki.debian.org/UEFI#RAID_for_the_EFI_System_Partition
+I=0
+for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
+	mkdosfs -F 32 -n EFI-$I $EFIPARTITION
+	if [ $I -eq 0 ]; then
+		mkdir -pv /target/boot/efi
+		mount $EFIPARTITION /target/boot/efi
+	else
+		mkdir -pv /mnt/efi-$I
+		mount $EFIPARTITION /mnt/efi-$I
+	fi
+	((I++))
+done
+
 debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $DIST /target http://http.debian.net/debian/
 
 NEWHOST=debian$(hostid)
@@ -228,9 +244,23 @@ perl -i -pe 's/main$/main contrib non-free/' /target/etc/apt/sources.list
 cp -va /etc/apt/sources.list.d/$DIST-backports.list /target/etc/apt/sources.list.d/
 chroot /target /usr/bin/apt-get update
 
-chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common grub-pc zfs-initramfs
+GRUBPKG=grub-pc
+#GRUBPKG=grub-efi-amd64 # INCOMPLETE NOT TESTED
+
+chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs
 grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
 chroot /target /usr/sbin/update-grub
+
+I=0
+for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
+	if [ $I -gt 0 ]; then
+		rsync -avx /target/boot/efi/ /mnt/efi-$I/
+		umount /mnt/efi-$I
+	fi
+	# echo "#PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /target/etc/fstab
+	((I++))
+done
+umount /target/boot/efi
 
 if [ -d /proc/acpi ]; then
 	chroot /target /usr/bin/apt-get install --yes acpi acpid
