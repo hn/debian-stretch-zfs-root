@@ -251,13 +251,20 @@ chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GR
 grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
 chroot /target /usr/sbin/update-grub
 
+if [ "${GRUBPKG:0:8}" == "grub-efi" ]; then
+	chroot /target /usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=debian --recheck --no-floppy
+else
+	EFIFSTAB="#"
+fi
+
 I=0
 for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 	if [ $I -gt 0 ]; then
 		rsync -avx /target/boot/efi/ /mnt/efi-$I/
 		umount /mnt/efi-$I
+		EFIBAKPART="#"
 	fi
-	# echo "#PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /target/etc/fstab
+	echo "${EFIFSTAB}${EFIBAKPART}PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /target/etc/fstab
 	((I++))
 done
 umount /target/boot/efi
