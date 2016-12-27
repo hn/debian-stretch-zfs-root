@@ -1,29 +1,14 @@
 #!/bin/bash
 #
-# debian-jessie-zfs-root.sh V1.00
+# debian-jessie-zfs-root.sh V1.01
 #
-# Install Debian Jessie to a native ZFS root filesystem
+# Install Debian GNU/Linux 8 Jessie to a native ZFS root filesystem
 #
 # (C) 2016 Hajo Noerenberg
 #
 #
-# Usage:
-# - Boot Jessie Live CD https://www.debian.org/CD/live/ ('standard' edition)
-# - Set http_proxy environment variable (if needed)
-# - Run this script
-# - User interface: Select disks and RAID level
-# - Let the installer to the work
-# - User interface: install grub to *all* relevant disks
-# - User interface: enter root password and select timezone
-# - Reboot
-#
-# Bugs:
-# - RAID10 Mirror with >= 6 disks fails to boot with grub, probably a
-#   grub bug -- need to investigate further
-#
-# Credits:
-# - https://github.com/zfsonlinux/zfs/wiki/Ubuntu-16.04-Root-on-ZFS
-# - https://janvrany.github.io/2016/10/fun-with-zfs-part-1-installing-debian-jessie-on-zfs-root.html
+# http://www.noerenberg.de/
+# https://github.com/hn/debian-jessie-zfs-root
 #
 #
 # This program is free software: you can redistribute it and/or modify
