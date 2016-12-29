@@ -14,16 +14,16 @@ Installs Debian GNU/Linux 8 Jessie to a native ZFS root filesystem using a [Debi
 
 ## Fixes included
 
-* grub (v2.02, included in Debian 8), especially grub-probe, does not support all ZFS features and subsequently refuses to install. This script disables `feature@hole_birth` and `feature@embedded_data` (and you should _not_ enable those features after installation).
+* grub (v2.02, included in Debian 8), especially `grub-probe`, [does not support](https://github.com/zfsonlinux/grub/issues/19) [all ZFS features](http://savannah.gnu.org/bugs/?42861) and subsequently [refuses to install](https://bugs.launchpad.net/ubuntu/+source/grub2/+bug/1451476). This script disables `feature@hole_birth` and `feature@embedded_data` (and you should _not_ enable those features after installation).
 * The ZFS SPL uses the system `hostid`, [which isn't initialized correctly on Debian systems](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=595790).
-* Woraround for grub (v2.02) mysteriously _not_ searching devices in `/dev/disk/by-id` but in `/dev`.
+* Workaround for grub (v2.02) [mysteriously _not_ searching devices in `/dev/disk/by-id` but in `/dev`](https://github.com/zfsonlinux/grub/issues/5).
 * Some mountpoints, notably `/var`, need to be mounted via fstab as the ZFS mount script runs too late during boot.
 * The EFI System Partition (ESP) is a single point of failure on one disk, [this is arguably a mis-design in the UEFI specification](https://wiki.debian.org/UEFI#RAID_for_the_EFI_System_Partition).
 
 ## Bugs
 
 * Booting via EFI has not been tested at all.
-* RAID10 Mirror with >= 6 disks fails to boot with grub, probably a grub bug -- need to investigate further.
+* ~~RAID10 Mirror with >= 6 disks fails to boot with grub, probably a grub bug.~~ The (Virtualbox) BIOS does not detect more than 4 drives connected to a virtual SATA controller and therefore grub isn't able to access them. Connecting the drives in a mixed SATA/IDE/SCSI RAID10 configuration works fine, even with 6 drives.
 
 ## Credits
 
