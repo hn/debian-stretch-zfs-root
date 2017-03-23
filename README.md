@@ -4,11 +4,12 @@ Installs Debian GNU/Linux 8 Jessie to a native ZFS root filesystem using a [Debi
 ## Usage
 
 1. Boot [Jessie Live CD](https://www.debian.org/CD/live/) ('standard' edition)
-1. Set `http_proxy` environment variable (if needed)
+1. Login (user: `user`, password: `live`) and become root
+1. Setup network and export `http_proxy` environment variable (if needed)
 1. Run this script
 1. User interface: Select disks and RAID level
 1. Let the installer do the work
-1. User interface: install grub to *all* relevant disks
+1. User interface: install grub to *all* disks participating in the array
 1. User interface: enter root password and select timezone
 1. Reboot
 
@@ -23,7 +24,7 @@ Installs Debian GNU/Linux 8 Jessie to a native ZFS root filesystem using a [Debi
 ## Bugs
 
 * Booting via EFI has not been tested at all.
-* ~~RAID10 Mirror with >= 6 disks fails to boot with grub, probably a grub bug.~~ The (Virtualbox) BIOS does not detect more than 4 drives connected to a virtual SATA controller and therefore grub isn't able to access them. Connecting the drives in a mixed SATA/IDE/SCSI RAID10 configuration works fine, even with 6 drives.
+* ~~RAID10 Mirror with >= 6 disks fails to boot with grub, probably a grub bug.~~ The (Virtualbox) BIOS does not detect more than 4 drives connected to a virtual SATA controller and therefore grub isn't able to access them. Operating the drives in a SCSI or mixed SATA/IDE/SCSI RAID10 configuration works fine, even with 6 or more drives.
 
 ## Credits
 
