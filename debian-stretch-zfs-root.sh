@@ -1,14 +1,14 @@
 #!/bin/bash
 #
-# debian-jessie-zfs-root.sh V1.01
+# debian-stretch-zfs-root.sh V1.00
 #
-# Install Debian GNU/Linux 8 Jessie to a native ZFS root filesystem
+# Install Debian GNU/Linux 9 Stretch to a native ZFS root filesystem
 #
-# (C) 2016 Hajo Noerenberg
+# (C) 2017 Hajo Noerenberg
 #
 #
 # http://www.noerenberg.de/
-# https://github.com/hn/debian-jessie-zfs-root
+# https://github.com/hn/debian-stretch-zfs-root
 #
 #
 # This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,8 @@
 ### Static settings
 
 ZPOOL=tank
-DIST=jessie
+LIVEDIST=jessie
+TARGETDIST=stretch
 
 PARTBIOS=1
 PARTEFI=2
@@ -117,21 +118,14 @@ if [ $(hostid | cut -b-6) == "007f01" ]; then
 	dd if=/dev/urandom of=/etc/hostid bs=1 count=4
 fi
 
-cat << EOF >/etc/apt/sources.list.d/$DIST-backports.list
-deb http://http.debian.net/debian/ $DIST-backports main contrib non-free
-deb-src http://http.debian.net/debian/ $DIST-backports main contrib non-free
+cat << EOF >/etc/apt/sources.list.d/$LIVEDIST-backports.list
+deb http://http.debian.net/debian/ $LIVEDIST-backports main contrib non-free
+deb-src http://http.debian.net/debian/ $LIVEDIST-backports main contrib non-free
 EOF
 
-# Woraround for grub mysteriously NOT searching devices in /dev/disk/by-id but in /dev
-cat << 'EOF' >/etc/udev/rules.d/70-zfs-grub-fix.rules
-KERNEL=="sd*", ENV{ID_SERIAL}=="?*", SYMLINK+="$env{ID_BUS}-$env{ID_SERIAL}"
-ENV{DEVTYPE}=="partition", IMPORT{parent}="ID_*", ENV{ID_FS_TYPE}=="zfs_member", SYMLINK+="$env{ID_BUS}-$env{ID_SERIAL}-part%n"
-EOF
-udevadm trigger
+test -f /var/lib/apt/lists/http.debian.net_debian_dists_$LIVEDIST-backports_InRelease || apt-get update
 
-test -f /var/lib/apt/lists/http.debian.net_debian_dists_$DIST-backports_InRelease || apt-get update
-
-test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk debootstrap dosfstools zfs-dkms/$DIST-backports
+test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk debootstrap dosfstools zfs-dkms/$LIVEDIST-backports
 
 test -d /proc/spl/kstat/zfs/$ZPOOL && zpool destroy $ZPOOL
 
@@ -157,8 +151,8 @@ done
 zfs set compression=lz4 $ZPOOL
 
 zfs create $ZPOOL/ROOT
-zfs create -o mountpoint=/ $ZPOOL/ROOT/debian-$DIST
-zpool set bootfs=$ZPOOL/ROOT/debian-$DIST $ZPOOL
+zfs create -o mountpoint=/ $ZPOOL/ROOT/debian-$TARGETDIST
+zpool set bootfs=$ZPOOL/ROOT/debian-$TARGETDIST $ZPOOL
 
 zfs create -o mountpoint=/tmp -o setuid=off -o exec=off -o quota=$SIZETMP $ZPOOL/tmp
 
@@ -193,15 +187,14 @@ for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 	((I++))
 done
 
-debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $DIST /target http://http.debian.net/debian/
+debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://http.debian.net/debian/
 
 NEWHOST=debian-$(hostid)
 echo $NEWHOST >/target/etc/hostname
 sed -i "1s/^/127.0.1.1\t$NEWHOST\n/" /target/etc/hosts
 
+# Copy hostid as the target system will otherwise not be able to mount the misleadingly foreign file system
 cp -va /etc/hostid /target/etc/
-
-cp -va /etc/udev/rules.d/70-zfs-grub-fix.rules /target/etc/udev/rules.d/
 
 cat << EOF >/target/etc/fstab
 # /etc/fstab: static file system information.
@@ -226,13 +219,12 @@ echo 'LANG="en_US.UTF-8"' > /target/etc/default/locale
 chroot /target /usr/sbin/locale-gen
 
 perl -i -pe 's/main$/main contrib non-free/' /target/etc/apt/sources.list
-cp -va /etc/apt/sources.list.d/$DIST-backports.list /target/etc/apt/sources.list.d/
 chroot /target /usr/bin/apt-get update
 
 GRUBPKG=grub-pc
 #GRUBPKG=grub-efi-amd64 # INCOMPLETE NOT TESTED
 
-chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs/$DIST-backports zfs-dkms/$DIST-backports
+chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms
 grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
 chroot /target /usr/sbin/update-grub
 
@@ -259,7 +251,7 @@ if [ -d /proc/acpi ]; then
 	chroot /target service acpid stop
 fi
 
-echo -e "\nauto eth0\niface eth0 inet dhcp\n" >>/target/etc/network/interfaces
+echo -e "\nauto enp0s3\niface enp0s3 inet dhcp\n" >>/target/etc/network/interfaces
 echo -e "nameserver 8.8.8.8\nnameserver 8.8.4.4" >> /target/etc/resolv.conf
 
 chroot /target /usr/bin/passwd
