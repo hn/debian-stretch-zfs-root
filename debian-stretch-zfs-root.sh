@@ -27,7 +27,6 @@
 ### Static settings
 
 ZPOOL=tank
-LIVEDIST=jessie
 TARGETDIST=stretch
 
 PARTBIOS=1
@@ -118,14 +117,24 @@ if [ $(hostid | cut -b-6) == "007f01" ]; then
 	dd if=/dev/urandom of=/etc/hostid bs=1 count=4
 fi
 
-cat << EOF >/etc/apt/sources.list.d/$LIVEDIST-backports.list
-deb http://http.debian.net/debian/ $LIVEDIST-backports main contrib non-free
-deb-src http://http.debian.net/debian/ $LIVEDIST-backports main contrib non-free
-EOF
+DEBRELEASE=$(head -n1 /etc/debian_version)
+case $DEBRELEASE in
+	8*)
+		echo "deb http://http.debian.net/debian/ jessie-backports main contrib non-free" >/etc/apt/sources.list.d/jessie-backports.list
+		test -f /var/lib/apt/lists/http.debian.net_debian_dists_jessie-backports_InRelease || apt-get update
+		test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk debootstrap dosfstools zfs-dkms/jessie-backports
+		;;
 
-test -f /var/lib/apt/lists/http.debian.net_debian_dists_$LIVEDIST-backports_InRelease || apt-get update
-
-test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk debootstrap dosfstools zfs-dkms/$LIVEDIST-backports
+	9*)
+		echo "deb http://deb.debian.org/debian/ stretch contrib non-free" >/etc/apt/sources.list.d/contrib-non-free.list
+		test -f /var/lib/apt/lists/deb.debian.org_debian_dists_stretch_non-free_binary-amd64_Packages || apt-get update
+		test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk debootstrap dosfstools zfs-dkms
+		;;
+	*)
+		echo "Unsupported Debian Live CD release"
+		exit 1
+		;;
+esac
 
 test -d /proc/spl/kstat/zfs/$ZPOOL && zpool destroy $ZPOOL
 
@@ -155,6 +164,7 @@ zfs create -o mountpoint=/ $ZPOOL/ROOT/debian-$TARGETDIST
 zpool set bootfs=$ZPOOL/ROOT/debian-$TARGETDIST $ZPOOL
 
 zfs create -o mountpoint=/tmp -o setuid=off -o exec=off -o quota=$SIZETMP $ZPOOL/tmp
+chmod 1777 /target/tmp
 
 # /var needs to be mounted via fstab, the ZFS mount script runs too late during boot
 zfs create -o mountpoint=legacy $ZPOOL/var
@@ -165,6 +175,7 @@ mount -t zfs $ZPOOL/var /target/var
 zfs create -o mountpoint=legacy -o com.sun:auto-snapshot=false -o quota=$SIZEVARTMP $ZPOOL/var/tmp
 mkdir -v -m 1777 /target/var/tmp
 mount -t zfs $ZPOOL/var/tmp /target/var/tmp
+chmod 1777 /target/var/tmp
 
 zfs create -V $SIZESWAP -b $(getconf PAGESIZE) -o primarycache=metadata -o com.sun:auto-snapshot=false $ZPOOL/swap
 mkswap -f /dev/zvol/$ZPOOL/swap

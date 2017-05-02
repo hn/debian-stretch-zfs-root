@@ -1,7 +1,7 @@
 # debian-stretch-zfs-root
 Installs Debian GNU/Linux 9 Stretch to a native ZFS root filesystem using a [Debian Jessie Live CD](https://www.debian.org/CD/live/) and ZFS packages from [backports.org](https://backports.debian.org/).
 
-As the time of this writing, Debian 9 (Stretch) is in 'frozen' state and therefore there is no Stretch Live CD available. So you need to use a Jessie Live CD for installation.
+As the time of this writing, Debian 9 (Stretch) is in 'frozen' state ~~and therefore there is no Stretch Live CD available. So you need to use a Jessie Live CD for installation~~. [Debian Stretch Live CD Images](https://cdimage.debian.org/mirror/cdimage/weekly-live-builds/amd64/iso-hybrid/) are available now and this script both supports Jessie and Stretch Live CD Images.
 
 ## Usage
 
