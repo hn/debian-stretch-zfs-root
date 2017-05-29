@@ -82,7 +82,7 @@ case "$RAIDLEVEL" in
   	;;
   raid1)
 	if [ $((${#ZFSPARTITIONS[@]} % 2)) -ne 0 ]; then
-		echo "Need an even number of disks for RAID level '$RAIDLEVEL': ${ZFSPARTITIONS[@]}"
+		echo "Need an even number of disks for RAID level '$RAIDLEVEL': ${ZFSPARTITIONS[@]}" >&2
 		exit 1
 	fi
 	I=0
@@ -96,7 +96,7 @@ case "$RAIDLEVEL" in
   	;;
   *)
 	if [ ${#ZFSPARTITIONS[@]} -lt 3 ]; then
-		echo "Need at least 3 disks for RAID level '$RAIDLEVEL': ${ZFSPARTITIONS[@]}"
+		echo "Need at least 3 disks for RAID level '$RAIDLEVEL': ${ZFSPARTITIONS[@]}" >&2
 		exit 1
 	fi
 	RAIDDEF="$RAIDLEVEL ${ZFSPARTITIONS[*]}"
@@ -131,11 +131,16 @@ case $DEBRELEASE in
 		test -d /usr/share/doc/zfs-dkms || DEBIAN_FRONTEND=noninteractive apt-get install --yes gdisk debootstrap dosfstools zfs-dkms
 		;;
 	*)
-		echo "Unsupported Debian Live CD release"
+		echo "Unsupported Debian Live CD release" >&2
 		exit 1
 		;;
 esac
 
+modprobe zfs
+if [ $? -ne 0 ] ; then
+	echo "Unable to load ZFS kernel module" >&2
+	exit 1
+fi
 test -d /proc/spl/kstat/zfs/$ZPOOL && zpool destroy $ZPOOL
 
 for DISK in "${DISKS[@]}"; do
@@ -154,6 +159,10 @@ sleep 2
 # Using "-d" to disable all features, and selectivly enable features later (but NOT 'hole_birth' and 'embedded_data')
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=776676
 zpool create -f -o ashift=12 -d -o altroot=/target -O atime=off -O mountpoint=none $ZPOOL $RAIDDEF
+if [ $? -ne 0 ] ; then
+	echo "Unable to create zpool '$ZPOOL'" >&2
+	exit 1
+fi
 for ZFSFEATURE in async_destroy empty_bpobj lz4_compress spacemap_histogram enabled_txg extensible_dataset bookmarks filesystem_limits large_blocks; do
 	zpool set feature@$ZFSFEATURE=enabled $ZPOOL
 done
