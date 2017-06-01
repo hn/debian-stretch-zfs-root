@@ -45,7 +45,11 @@ for IDLINK in $(find /dev/disk/by-id/ -type l); do
 done
 
 for DISK in $(lsblk -I8 -dn -o name); do
-	SELECT+=("$DISK" "${BYID[$DISK]}" off)
+	if [ -z "${BYID[$DISK]}" ]; then
+		SELECT+=("$DISK" "(no /dev/disk/by-id persistent device name available)" off)
+	else
+		SELECT+=("$DISK" "${BYID[$DISK]}" off)
+	fi
 done
 
 TMPFILE=$(mktemp)
@@ -57,9 +61,15 @@ if [ $? -ne 0 ]	; then
 fi
 
 while read -r DISK; do
-	DISKS+=("${BYID[$DISK]}")
-	ZFSPARTITIONS+=("${BYID[$DISK]}-part$PARTZFS")
-	EFIPARTITIONS+=("${BYID[$DISK]}-part$PARTEFI")
+	if [ -z "${BYID[$DISK]}" ]; then
+		DISKS+=("$DISK")
+		ZFSPARTITIONS+=("$DISK$PARTZFS")
+		EFIPARTITIONS+=("$DISK$PARTEFI")
+	else
+		DISKS+=("${BYID[$DISK]}")
+		ZFSPARTITIONS+=("${BYID[$DISK]}-part$PARTZFS")
+		EFIPARTITIONS+=("${BYID[$DISK]}-part$PARTEFI")
+	fi
 done < $TMPFILE
 
 whiptail --backtitle $0 --title "RAID level selection" --separate-output \
@@ -104,7 +114,7 @@ case "$RAIDLEVEL" in
 esac
 
 whiptail --backtitle $0 --title "Confirmation" \
-	--yesno "\nAre you sure to destroy ZFS pool '$ZPOOL' (if existing), wipe all data of disks ${DISKS[*]} and create a RAID '$RAIDLEVEL'?\n" 20 74
+	--yesno "\nAre you sure to destroy ZFS pool '$ZPOOL' (if existing), wipe all data of disks '${DISKS[*]}' and create a RAID '$RAIDLEVEL'?\n" 20 74
 
 if [ $? -ne 0 ]	; then
 	exit 1
