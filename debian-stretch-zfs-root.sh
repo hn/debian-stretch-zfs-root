@@ -158,9 +158,9 @@ for DISK in "${DISKS[@]}"; do
 
 	sgdisk --zap-all $DISK
 
-	sgdisk -a1 -n$PARTBIOS:34:2047   -t1:EF02 \
-	           -n$PARTEFI:2048:+512M -t2:EF00 \
-                   -n$PARTZFS:0:0        -t3:BF01 $DISK
+	sgdisk -a1 -n$PARTBIOS:34:2047   -t$PARTBIOS:EF02 \
+	           -n$PARTEFI:2048:+512M -t$PARTEFI:EF00 \
+                   -n$PARTZFS:0:0        -t$PARTZFS:BF01 $DISK
 done
 
 sleep 2
