@@ -1,11 +1,9 @@
 # debian-stretch-zfs-root
-Installs Debian GNU/Linux 9 Stretch to a native ZFS root filesystem using a [Debian Jessie Live CD](https://www.debian.org/CD/live/) and ZFS packages from [backports.org](https://backports.debian.org/).
-
-As the time of this writing, Debian 9 (Stretch) is in 'frozen' state ~~and therefore there is no Stretch Live CD available. So you need to use a Jessie Live CD for installation~~. [Debian Stretch Live CD Images](https://cdimage.debian.org/mirror/cdimage/weekly-live-builds/amd64/iso-hybrid/) are available now and this script both supports Jessie and Stretch Live CD Images.
+Installs Debian GNU/Linux 9 Stretch to a native ZFS root filesystem using a [Debian Stretch Live CD](https://www.debian.org/CD/live/). Installation with a Debian Jessie Live CD is supported as well, ZFS packages from [backports.org](https://backports.debian.org/) will be used in this case.
 
 ## Usage
 
-1. Boot [Jessie Live CD](https://www.debian.org/CD/live/) ('standard' edition)
+1. Boot [Stretch Live CD](https://www.debian.org/CD/live/) ('standard' edition)
 1. Login (user: `user`, password: `live`) and become root
 1. Setup network and export `http_proxy` environment variable (if needed)
 1. Run this script
@@ -24,6 +22,8 @@ As the time of this writing, Debian 9 (Stretch) is in 'frozen' state ~~and there
 ## Bugs
 
 * Booting via EFI has not been tested at all.
+* During installation you might encounter some SPL package errors ([`Please make sure the kmod spl devel package is installed`](https://github.com/hn/debian-stretch-zfs-root/issues/2)) which can be ignored safely.
+* `grub-install` mysteriously fails for disk numbers >= 4 (`grub-install: error: cannot find a GRUB drive for /dev/disk/by-id/...`).
 
 ## Credits
 
