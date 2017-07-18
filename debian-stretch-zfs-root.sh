@@ -177,6 +177,10 @@ for ZFSFEATURE in async_destroy empty_bpobj lz4_compress spacemap_histogram enab
 	zpool set feature@$ZFSFEATURE=enabled $ZPOOL
 done
 zfs set compression=lz4 $ZPOOL
+# The two properties below improve performance but reduce compatibility with non-Linux ZFS implementations
+# Commented out by default
+#zfs set xattr=sa $ZPOOL
+#zfs set acltype=posixacl $ZPOOL
 
 zfs create $ZPOOL/ROOT
 zfs create -o mountpoint=/ $ZPOOL/ROOT/debian-$TARGETDIST
@@ -196,7 +200,7 @@ mkdir -v -m 1777 /target/var/tmp
 mount -t zfs $ZPOOL/var/tmp /target/var/tmp
 chmod 1777 /target/var/tmp
 
-zfs create -V $SIZESWAP -b $(getconf PAGESIZE) -o primarycache=metadata -o com.sun:auto-snapshot=false $ZPOOL/swap
+zfs create -V $SIZESWAP -b $(getconf PAGESIZE) -o primarycache=metadata -o com.sun:auto-snapshot=false -o logbias=throughput -o sync=always $ZPOOL/swap
 mkswap -f /dev/zvol/$ZPOOL/swap
 
 zpool status
