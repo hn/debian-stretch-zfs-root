@@ -201,6 +201,8 @@ mount -t zfs $ZPOOL/var/tmp /target/var/tmp
 chmod 1777 /target/var/tmp
 
 zfs create -V $SIZESWAP -b $(getconf PAGESIZE) -o primarycache=metadata -o com.sun:auto-snapshot=false -o logbias=throughput -o sync=always $ZPOOL/swap
+# sometimes needed to wait for /dev/zvol/$ZPOOL/swap to appear
+sleep 2
 mkswap -f /dev/zvol/$ZPOOL/swap
 
 zpool status
