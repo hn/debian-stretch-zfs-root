@@ -24,6 +24,8 @@
 # with this program. If not, see <http://www.gnu.org/licenses/gpl-3.0.txt>.
 #
 
+set -e
+
 ### Static settings, overridable by environment variables
 
 ZPOOL=${ZPOOL:-tank}
@@ -111,7 +113,7 @@ case "$RAIDLEVEL" in
 			RAIDDEF+=" mirror"
 		fi
 		RAIDDEF+=" $ZFSPARTITION"
-		((I++))
+		((I++)) || true
 	done
   	;;
   *)
@@ -233,7 +235,7 @@ for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 		mkdir -pv /mnt/efi-$I
 		mount $EFIPARTITION /mnt/efi-$I
 	fi
-	((I++))
+	((I++)) || true
 done
 
 debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://http.debian.net/debian/
