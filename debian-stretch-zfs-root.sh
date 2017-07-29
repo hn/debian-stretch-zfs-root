@@ -178,7 +178,7 @@ sleep 2
 # Workaround for Debian's grub, especially grub-probe, not supporting all ZFS features
 # Using "-d" to disable all features, and selectivly enable features later (but NOT 'hole_birth' and 'embedded_data')
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=776676
-zpool create -f -o ashift=12 -d -o altroot=/target -O atime=off -O mountpoint=none $ZPOOL $RAIDDEF
+zpool create -f -o ashift=12 -d -o altroot=/target -o autoexpand=on -O atime=off -O mountpoint=none $ZPOOL $RAIDDEF
 if [ $? -ne 0 ] ; then
 	echo "Unable to create zpool '$ZPOOL'" >&2
 	exit 1
