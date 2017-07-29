@@ -72,9 +72,9 @@ fi
 
 while read -r DISK; do
 	if [ -z "${BYID[$DISK]}" ]; then
-		DISKS+=("$DISK")
-		ZFSPARTITIONS+=("$DISK$PARTZFS")
-		EFIPARTITIONS+=("$DISK$PARTEFI")
+		DISKS+=("/dev/$DISK")
+		ZFSPARTITIONS+=("/dev/$DISK$PARTZFS")
+		EFIPARTITIONS+=("/dev/$DISK$PARTEFI")
 	else
 		DISKS+=("${BYID[$DISK]}")
 		ZFSPARTITIONS+=("${BYID[$DISK]}-part$PARTZFS")
