@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #
 # debian-stretch-zfs-root.sh V1.00
 #
@@ -101,7 +101,7 @@ case "$RAIDLEVEL" in
 			RAIDDEF+=" mirror"
 		fi
 		RAIDDEF+=" $ZFSPARTITION"
-		((I++))
+		((I++)) || true
 	done
   	;;
   *)
@@ -220,7 +220,7 @@ for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 		mkdir -pv /mnt/efi-$I
 		mount $EFIPARTITION /mnt/efi-$I
 	fi
-	((I++))
+	((I++)) || true
 done
 
 debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://http.debian.net/debian/
@@ -278,7 +278,7 @@ for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 		EFIBAKPART="#"
 	fi
 	echo "${EFIFSTAB}${EFIBAKPART}PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /target/etc/fstab
-	((I++))
+	((I++)) || true
 done
 umount /target/boot/efi
 
