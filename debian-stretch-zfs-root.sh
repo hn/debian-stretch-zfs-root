@@ -24,18 +24,30 @@
 # with this program. If not, see <http://www.gnu.org/licenses/gpl-3.0.txt>.
 #
 
-### Static settings
+set -e
 
-ZPOOL=tank
-TARGETDIST=stretch
+### Static settings, overridable by environment variables
 
-PARTBIOS=1
-PARTEFI=2
-PARTZFS=3
+ZPOOL=${ZPOOL:-tank}
+TARGETDIST=${TARGETDIST:-stretch}
 
-SIZESWAP=2G
-SIZETMP=3G
-SIZEVARTMP=3G
+SIZESWAP=${SIZESWAP:-2G}
+SIZETMP=${SIZETMP:-3G}
+SIZEVARTMP=${SIZEVARTMP:-3G}
+
+GRUBPKG=${GRUBPKG:-grub-pc}
+#GRUBPKG=grub-efi-amd64 # INCOMPLETE NOT TESTED
+
+test -n "$ETHDEV" || ETHDEV=$(ip -o link show|grep -v ' lo:'|head -n 1|cut -d: -f2|sed -e 's/ //g')
+
+PARTBIOS=${PARTBIOS:-1}
+PARTEFI=${PARTEFI:-2}
+PARTZFS=${PARTZFS:-3}
+
+ENABLE_POSIXACL=${ENABLE_POSIXACL:-no}
+
+# NEWHOST is also used for hostname of the new system, if set (if unset, is
+# taken from freshly generated hostid)
 
 ### User settings
 
@@ -174,7 +186,7 @@ sleep 2
 # Workaround for Debian's grub, especially grub-probe, not supporting all ZFS features
 # Using "-d" to disable all features, and selectivly enable features later (but NOT 'hole_birth' and 'embedded_data')
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=776676
-zpool create -f -o ashift=12 -d -o altroot=/target -O atime=off -O mountpoint=none $ZPOOL $RAIDDEF
+zpool create -f -o ashift=12 -d -o altroot=/target -o autoexpand=on -O atime=off -O mountpoint=none $ZPOOL $RAIDDEF
 if [ $? -ne 0 ] ; then
 	echo "Unable to create zpool '$ZPOOL'" >&2
 	exit 1
@@ -184,9 +196,12 @@ for ZFSFEATURE in async_destroy empty_bpobj lz4_compress spacemap_histogram enab
 done
 zfs set compression=lz4 $ZPOOL
 # The two properties below improve performance but reduce compatibility with non-Linux ZFS implementations
-# Commented out by default
-#zfs set xattr=sa $ZPOOL
-#zfs set acltype=posixacl $ZPOOL
+case "$ENABLE_POSIXACL" in
+	y*)
+		zfs set xattr=sa $ZPOOL
+		zfs set acltype=posixacl $ZPOOL
+		;;
+esac
 
 zfs create $ZPOOL/ROOT
 zfs create -o mountpoint=/ $ZPOOL/ROOT/debian-$TARGETDIST
@@ -231,7 +246,7 @@ done
 
 debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://http.debian.net/debian/
 
-NEWHOST=debian-$(hostid)
+test -n NEWHOST || NEWHOST=debian-$(hostid)}
 echo $NEWHOST >/target/etc/hostname
 sed -i "1s/^/127.0.1.1\t$NEWHOST\n/" /target/etc/hosts
 
@@ -263,9 +278,6 @@ chroot /target /usr/sbin/locale-gen
 perl -i -pe 's/main$/main contrib non-free/' /target/etc/apt/sources.list
 chroot /target /usr/bin/apt-get update
 
-GRUBPKG=grub-pc
-#GRUBPKG=grub-efi-amd64 # INCOMPLETE NOT TESTED
-
 chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms
 grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
 chroot /target /usr/sbin/update-grub
@@ -293,10 +305,10 @@ if [ -d /proc/acpi ]; then
 	chroot /target service acpid stop
 fi
 
-ETHDEV=$(udevadm info -e | grep "ID_NET_NAME_PATH=" | head -n1 | cut -d= -f2)
-test -n "$ETHDEV" || ETHDEV=enp0s1
-echo -e "\nauto $ETHDEV\niface $ETHDEV inet dhcp\n" >>/target/etc/network/interfaces
-echo -e "nameserver 8.8.8.8\nnameserver 8.8.4.4" >> /target/etc/resolv.conf
+if [ -n "$ETHDEV" ]; then
+	echo -e "\nauto $ETHDEV\niface $ETHDEV inet dhcp\n" >>/target/etc/network/interfaces
+	echo -e "nameserver 8.8.8.8\nnameserver 8.8.4.4" >> /target/etc/resolv.conf
+fi
 
 chroot /target /usr/bin/passwd
 chroot /target /usr/sbin/dpkg-reconfigure tzdata
