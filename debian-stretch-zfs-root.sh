@@ -40,9 +40,9 @@ SIZEVARTMP=3G
 ### User settings
 
 declare -A BYID
-for IDLINK in $(find /dev/disk/by-id/ -type l); do
-	BYID["$(basename $(readlink $IDLINK))"]="$IDLINK"
-done
+while read -r IDLINK; do
+	BYID["$(basename "$(readlink "$IDLINK")")"]="$IDLINK"
+done < <(find /dev/disk/by-id/ -type l)
 
 for DISK in $(lsblk -I8 -dn -o name); do
 	if [ -z "${BYID[$DISK]}" ]; then
@@ -53,10 +53,10 @@ for DISK in $(lsblk -I8 -dn -o name); do
 done
 
 TMPFILE=$(mktemp)
-whiptail --backtitle $0 --title "Drive selection" --separate-output \
-	--checklist "\nPlease select ZFS RAID drives\n" 20 74 8 "${SELECT[@]}" 2>$TMPFILE
+whiptail --backtitle "$0" --title "Drive selection" --separate-output \
+	--checklist "\nPlease select ZFS RAID drives\n" 20 74 8 "${SELECT[@]}" 2>"$TMPFILE"
 
-if [ $? -ne 0 ]	; then
+if [ $? -ne 0 ]; then
 	exit 1
 fi
 
@@ -70,21 +70,21 @@ while read -r DISK; do
 		ZFSPARTITIONS+=("${BYID[$DISK]}-part$PARTZFS")
 		EFIPARTITIONS+=("${BYID[$DISK]}-part$PARTEFI")
 	fi
-done < $TMPFILE
+done < "$TMPFILE"
 
-whiptail --backtitle $0 --title "RAID level selection" --separate-output \
+whiptail --backtitle "$0" --title "RAID level selection" --separate-output \
 	--radiolist "\nPlease select ZFS RAID level\n" 20 74 8 \
 	"RAID0" "Striped disks" off \
 	"RAID1" "Mirrored disks (RAID10 for n>=4)" on \
 	"RAIDZ" "Distributed parity, one parity block" off \
 	"RAIDZ2" "Distributed parity, two parity blocks" off \
-	"RAIDZ3" "Distributed parity, three parity blocks" off 2>$TMPFILE
+	"RAIDZ3" "Distributed parity, three parity blocks" off 2>"$TMPFILE"
 
-if [ $? -ne 0 ]	; then
+if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-RAIDLEVEL=$(head -n1 $TMPFILE | tr [:upper:] [:lower:])
+RAIDLEVEL=$(head -n1 "$TMPFILE" | tr '[:upper:]' '[:lower:]')
 
 case "$RAIDLEVEL" in
   raid0)
@@ -97,7 +97,7 @@ case "$RAIDLEVEL" in
 	fi
 	I=0
 	for ZFSPARTITION in "${ZFSPARTITIONS[@]}"; do
-		if [ $(($I % 2)) -eq 0 ]; then
+		if [ $((I % 2)) -eq 0 ]; then
 			RAIDDEF+=" mirror"
 		fi
 		RAIDDEF+=" $ZFSPARTITION"
@@ -113,17 +113,17 @@ case "$RAIDLEVEL" in
   	;;
 esac
 
-whiptail --backtitle $0 --title "Confirmation" \
+whiptail --backtitle "$0" --title "Confirmation" \
 	--yesno "\nAre you sure to destroy ZFS pool '$ZPOOL' (if existing), wipe all data of disks '${DISKS[*]}' and create a RAID '$RAIDLEVEL'?\n" 20 74
 
-if [ $? -ne 0 ]	; then
+if [ $? -ne 0 ]; then
 	exit 1
 fi
 
 ### Start the real work
 
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=595790
-if [ $(hostid | cut -b-6) == "007f01" ]; then
+if [ "$(hostid | cut -b-6)" == "007f01" ]; then
 	dd if=/dev/urandom of=/etc/hostid bs=1 count=4
 fi
 
@@ -153,7 +153,7 @@ echo "Need packages: ${NEED_PACKAGES[@]}"
 if [ -n "${NEED_PACKAGES[*]}" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes "${NEED_PACKAGES[@]}"; fi
 
 modprobe zfs
-if [ $? -ne 0 ] ; then
+if [ $? -ne 0 ]; then
 	echo "Unable to load ZFS kernel module" >&2
 	exit 1
 fi
@@ -175,7 +175,7 @@ sleep 2
 # Using "-d" to disable all features, and selectivly enable features later (but NOT 'hole_birth' and 'embedded_data')
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=776676
 zpool create -f -o ashift=12 -d -o altroot=/target -O atime=off -O mountpoint=none $ZPOOL $RAIDDEF
-if [ $? -ne 0 ] ; then
+if [ $? -ne 0 ]; then
 	echo "Unable to create zpool '$ZPOOL'" >&2
 	exit 1
 fi
@@ -206,7 +206,7 @@ mkdir -v -m 1777 /target/var/tmp
 mount -t zfs $ZPOOL/var/tmp /target/var/tmp
 chmod 1777 /target/var/tmp
 
-zfs create -V $SIZESWAP -b $(getconf PAGESIZE) -o primarycache=metadata -o com.sun:auto-snapshot=false -o logbias=throughput -o sync=always $ZPOOL/swap
+zfs create -V $SIZESWAP -b "$(getconf PAGESIZE)" -o primarycache=metadata -o com.sun:auto-snapshot=false -o logbias=throughput -o sync=always $ZPOOL/swap
 # sometimes needed to wait for /dev/zvol/$ZPOOL/swap to appear
 sleep 2
 mkswap -f /dev/zvol/$ZPOOL/swap
@@ -232,7 +232,7 @@ done
 debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://http.debian.net/debian/
 
 NEWHOST=debian-$(hostid)
-echo $NEWHOST >/target/etc/hostname
+echo "$NEWHOST" >/target/etc/hostname
 sed -i "1s/^/127.0.1.1\t$NEWHOST\n/" /target/etc/hosts
 
 # Copy hostid as the target system will otherwise not be able to mount the misleadingly foreign file system
