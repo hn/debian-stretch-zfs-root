@@ -37,6 +37,9 @@ SIZESWAP=2G
 SIZETMP=3G
 SIZEVARTMP=3G
 
+GRUBPKG=grub-pc
+#GRUBPKG=grub-efi-amd64 # INCOMPLETE NOT TESTED
+
 ### User settings
 
 declare -A BYID
@@ -262,9 +265,6 @@ chroot /target /usr/sbin/locale-gen
 
 perl -i -pe 's/main$/main contrib non-free/' /target/etc/apt/sources.list
 chroot /target /usr/bin/apt-get update
-
-GRUBPKG=grub-pc
-#GRUBPKG=grub-efi-amd64 # INCOMPLETE NOT TESTED
 
 chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms
 grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
