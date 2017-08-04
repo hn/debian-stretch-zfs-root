@@ -229,7 +229,7 @@ for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 	((I++)) || true
 done
 
-debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://http.debian.net/debian/
+debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://deb.debian.org/debian/
 
 NEWHOST=debian-$(hostid)
 echo "$NEWHOST" >/target/etc/hostname
