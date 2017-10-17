@@ -232,7 +232,7 @@ for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 	((I++)) || true
 done
 
-debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less $TARGETDIST /target http://deb.debian.org/debian/
+debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less --components main,contrib,non-free $TARGETDIST /target http://deb.debian.org/debian/
 
 NEWHOST=debian-$(hostid)
 echo "$NEWHOST" >/target/etc/hostname
@@ -263,7 +263,6 @@ perl -i -pe 's/# (en_US.UTF-8)/$1/' /target/etc/locale.gen
 echo 'LANG="en_US.UTF-8"' > /target/etc/default/locale
 chroot /target /usr/sbin/locale-gen
 
-perl -i -pe 's/main$/main contrib non-free/' /target/etc/apt/sources.list
 chroot /target /usr/bin/apt-get update
 
 chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms
