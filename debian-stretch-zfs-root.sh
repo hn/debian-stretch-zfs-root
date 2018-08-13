@@ -4,7 +4,7 @@
 #
 # Install Debian GNU/Linux 9 Stretch to a native ZFS root filesystem
 #
-# (C) 2017 Hajo Noerenberg
+# (C) 2018 Hajo Noerenberg
 #
 #
 # http://www.noerenberg.de/
@@ -36,9 +36,6 @@ PARTZFS=3
 SIZESWAP=2G
 SIZETMP=3G
 SIZEVARTMP=3G
-
-GRUBPKG=grub-pc
-#GRUBPKG=grub-efi-amd64 # INCOMPLETE NOT TESTED
 
 ### User settings
 
@@ -115,6 +112,21 @@ case "$RAIDLEVEL" in
 	RAIDDEF="$RAIDLEVEL ${ZFSPARTITIONS[*]}"
   	;;
 esac
+
+GRUBPKG=grub-pc
+if [ -d /sys/firmware/efi ]; then
+	whiptail --backtitle "$0" --title "EFI boot" --separate-output \
+		--menu "\nYour hardware supports EFI. Which boot method should be used in the new to be installed system?\n" 20 74 8 \
+		"EFI" "Extensible Firmware Interface boot" \
+		"BIOS" "Legacy BIOS boot" 2>"$TMPFILE"
+
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
+	if grep -qi EFI $TMPFILE; then
+		GRUBPKG=grub-efi-amd64
+	fi
+fi
 
 whiptail --backtitle "$0" --title "Confirmation" \
 	--yesno "\nAre you sure to destroy ZFS pool '$ZPOOL' (if existing), wipe all data of disks '${DISKS[*]}' and create a RAID '$RAIDLEVEL'?\n" 20 74
@@ -217,21 +229,6 @@ mkswap -f /dev/zvol/$ZPOOL/swap
 zpool status
 zfs list
 
-# "This is arguably a mis-design in the UEFI specification - the ESP is a single point of failure on one disk."
-# https://wiki.debian.org/UEFI#RAID_for_the_EFI_System_Partition
-I=0
-for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
-	mkdosfs -F 32 -n EFI-$I $EFIPARTITION
-	if [ $I -eq 0 ]; then
-		mkdir -pv /target/boot/efi
-		mount $EFIPARTITION /target/boot/efi
-	else
-		mkdir -pv /mnt/efi-$I
-		mount $EFIPARTITION /mnt/efi-$I
-	fi
-	((I++)) || true
-done
-
 debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less --components main,contrib,non-free $TARGETDIST /target http://deb.debian.org/debian/
 
 NEWHOST=debian-$(hostid)
@@ -270,22 +267,23 @@ grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /t
 chroot /target /usr/sbin/update-grub
 
 if [ "${GRUBPKG:0:8}" == "grub-efi" ]; then
-	chroot /target /usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=debian --recheck --no-floppy
-else
-	EFIFSTAB="#"
-fi
 
-I=0
-for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
-	if [ $I -gt 0 ]; then
-		rsync -avx /target/boot/efi/ /mnt/efi-$I/
-		umount /mnt/efi-$I
-		EFIBAKPART="#"
-	fi
-	echo "${EFIFSTAB}${EFIBAKPART}PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /target/etc/fstab
-	((I++)) || true
-done
-umount /target/boot/efi
+	# "This is arguably a mis-design in the UEFI specification - the ESP is a single point of failure on one disk."
+	# https://wiki.debian.org/UEFI#RAID_for_the_EFI_System_Partition
+	mkdir -pv /target/boot/efi
+	I=0
+	for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
+		mkdosfs -F 32 -n EFI-$I $EFIPARTITION
+		mount $EFIPARTITION /target/boot/efi
+		chroot /target /usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id="Debian $TARGETDIST (RAID disk $I)" --recheck --no-floppy
+		umount $EFIPARTITION
+		if [ $I -gt 0 ]; then
+			EFIBAKPART="#"
+		fi
+		echo "${EFIBAKPART}PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /target/etc/fstab
+		((I++)) || true
+	done
+fi
 
 if [ -d /proc/acpi ]; then
 	chroot /target /usr/bin/apt-get install --yes acpi acpid
