@@ -3,15 +3,17 @@ Installs Debian GNU/Linux 9 Stretch to a native ZFS root filesystem using a [Deb
 
 ## Usage
 
-1. Boot [Stretch Live CD](https://www.debian.org/CD/live/) ('standard' edition)
+1. Boot [Stretch Live CD](https://www.debian.org/CD/live/)
 1. Login (user: `user`, password: `live`) and become root
 1. Setup network and export `http_proxy` environment variable (if needed)
-1. Run this script
+1. Run [this script](https://raw.githubusercontent.com/hn/debian-stretch-zfs-root/master/debian-stretch-zfs-root.sh)
 1. User interface: Select disks and RAID level
+1. User interface: Decide if you want Legacy BIOS or EFI boot (only if your hardware supports EFI)
 1. Let the installer do the work
-1. User interface: install grub to *all* disks participating in the array
+1. User interface: install grub to *all* disks participating in the array (only if you're using Legacy BIOS boot)
 1. User interface: enter root password and select timezone
 1. Reboot
+1. Star [this repository](https://github.com/hn/debian-stretch-zfs-root) :)
 
 ## Fixes included
 
@@ -22,7 +24,7 @@ Installs Debian GNU/Linux 9 Stretch to a native ZFS root filesystem using a [Deb
 ## Bugs
 
 * During installation you might encounter some SPL package errors ([`Please make sure the kmod spl devel package is installed`](https://github.com/hn/debian-stretch-zfs-root/issues/2)) which can be ignored safely.
-* `grub-install` mysteriously fails for disk numbers >= 4 (`grub-install: error: cannot find a GRUB drive for /dev/disk/by-id/...`).
+* `grub-install` sometimes mysteriously fails for disk numbers >= 4 (`grub-install: error: cannot find a GRUB drive for /dev/disk/by-id/...`).
 
 ## Credits
 
