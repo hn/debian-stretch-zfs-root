@@ -142,31 +142,34 @@ if [ "$(hostid | cut -b-6)" == "007f01" ]; then
 	dd if=/dev/urandom of=/etc/hostid bs=1 count=4
 fi
 
+if [ ! -f /usr/sbin/debootstrap ]; then NEED_PACKAGES+=(debootstrap); fi
+if [ ! -f /sbin/sgdisk ]; then NEED_PACKAGES+=(gdisk); fi
+if [ ! -f /sbin/mkdosfs ]; then NEED_PACKAGES+=(dosfstools); fi
+if [ ! -f /usr/bin/dpkg-buildpackage ]; then NEED_PACKAGES+=(dpkg-dev); fi
+if [ ! -d /usr/src/linux-headers-$(uname -r) ]; then NEED_PACKAGES+=(linux-headers-$(uname -r)); fi
+echo "Need packages: ${NEED_PACKAGES[@]}"
+if [ -n "${NEED_PACKAGES[*]}" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes "${NEED_PACKAGES[@]}"; fi
+
 DEBRELEASE=$(head -n1 /etc/debian_version)
 case $DEBRELEASE in
 	8*)
 		echo "deb http://http.debian.net/debian/ jessie-backports main contrib non-free" >/etc/apt/sources.list.d/jessie-backports.list
 		test -f /var/lib/apt/lists/http.debian.net_debian_dists_jessie-backports_InRelease || apt-get update
-		if [ ! -d /usr/share/doc/zfs-dkms ]; then NEED_PACKAGES+=(zfs-dkms/jessie-backports); fi
+		if [ ! -d /usr/share/doc/zfs-dkms ]; then ZFS_PACKAGES+=(zfs-dkms/jessie-backports); fi
 		;;
 
 	9*)
 		echo "deb http://deb.debian.org/debian/ stretch contrib non-free" >/etc/apt/sources.list.d/contrib-non-free.list
 		test -f /var/lib/apt/lists/deb.debian.org_debian_dists_stretch_non-free_binary-amd64_Packages || apt-get update
-		if [ ! -d /usr/share/doc/zfs-dkms ]; then NEED_PACKAGES+=(zfs-dkms); fi
+		if [ ! -d /usr/share/doc/zfs-dkms ]; then ZFS_PACKAGES+=(zfs-dkms); fi
 		;;
 	*)
 		echo "Unsupported Debian Live CD release" >&2
 		exit 1
 		;;
 esac
-if [ ! -f /sbin/zpool ]; then NEED_PACKAGES+=(zfsutils-linux); fi
-if [ ! -f /usr/sbin/debootstrap ]; then NEED_PACKAGES+=(debootstrap); fi
-if [ ! -f /sbin/sgdisk ]; then NEED_PACKAGES+=(gdisk); fi
-if [ ! -f /sbin/mkdosfs ]; then NEED_PACKAGES+=(dosfstools); fi
-echo "Need packages: ${NEED_PACKAGES[@]}"
-if [ -n "${NEED_PACKAGES[*]}" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes "${NEED_PACKAGES[@]}"; fi
-
+echo "ZFS packages: ${ZFS_PACKAGES[@]}"
+if [ -n "${ZFS_PACKAGES[*]}" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes "${ZFS_PACKAGES[@]}"; fi
 modprobe zfs
 if [ $? -ne 0 ]; then
 	echo "Unable to load ZFS kernel module" >&2
@@ -262,7 +265,8 @@ chroot /target /usr/sbin/locale-gen
 
 chroot /target /usr/bin/apt-get update
 
-chroot /target /usr/bin/apt-get install --yes  dpkg-dev linux-headers-$(uname -r) linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms dosfstools
+chroot /target /usr/bin/apt-get install --yes  dpkg-dev linux-headers-$(uname -r) linux-image-amd64 grub2-common $GRUBPKG dosfstools
+chroot /target /usr/bin/apt-get install --yes  zfs-initramfs zfs-dkms
 grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub
 chroot /target /usr/sbin/update-grub
 
