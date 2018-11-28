@@ -262,8 +262,8 @@ chroot /target /usr/sbin/locale-gen
 
 chroot /target /usr/bin/apt-get update
 
-chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms
-grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
+chroot /target /usr/bin/apt-get install --yes  dpkg-dev linux-headers-$(uname -r) linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms dosfstools
+grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub
 chroot /target /usr/sbin/update-grub
 
 if [ "${GRUBPKG:0:8}" == "grub-efi" ]; then
@@ -275,7 +275,7 @@ if [ "${GRUBPKG:0:8}" == "grub-efi" ]; then
 	for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 		mkdosfs -F 32 -n EFI-$I $EFIPARTITION
 		mount $EFIPARTITION /target/boot/efi
-		chroot /target /usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id="Debian $TARGETDIST (RAID disk $I)" --recheck --no-floppy
+		chroot /target /usr/sbin/grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id="Debian $TARGETDIST (RAID disk $I)" --recheck --no-floppy $EFIPARTITION
 		umount $EFIPARTITION
 		if [ $I -gt 0 ]; then
 			EFIBAKPART="#"
