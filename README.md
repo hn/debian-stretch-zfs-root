@@ -23,7 +23,6 @@ Installs Debian GNU/Linux 9 Stretch to a native ZFS root filesystem using a [Deb
 
 ## Bugs
 
-* During installation you might encounter some SPL package errors ([`Please make sure the kmod spl devel package is installed`](https://github.com/hn/debian-stretch-zfs-root/issues/2)) which can be ignored safely.
 * `grub-install` sometimes mysteriously fails for disk numbers >= 4 (`grub-install: error: cannot find a GRUB drive for /dev/disk/by-id/...`).
 
 ## Credits

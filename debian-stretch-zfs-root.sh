@@ -229,7 +229,7 @@ mkswap -f /dev/zvol/$ZPOOL/swap
 zpool status
 zfs list
 
-debootstrap --include=openssh-server,locales,joe,rsync,sharutils,psmisc,htop,patch,less --components main,contrib,non-free $TARGETDIST /target http://deb.debian.org/debian/
+debootstrap --include=openssh-server,locales,linux-headers-amd64,linux-image-amd64,joe,rsync,sharutils,psmisc,htop,patch,less --components main,contrib,non-free $TARGETDIST /target http://deb.debian.org/debian/
 
 NEWHOST=debian-$(hostid)
 echo "$NEWHOST" >/target/etc/hostname
@@ -262,7 +262,7 @@ chroot /target /usr/sbin/locale-gen
 
 chroot /target /usr/bin/apt-get update
 
-chroot /target /usr/bin/apt-get install --yes linux-image-amd64 grub2-common $GRUBPKG zfs-initramfs zfs-dkms
+chroot /target /usr/bin/apt-get install --yes grub2-common $GRUBPKG zfs-initramfs zfs-dkms
 grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
 chroot /target /usr/sbin/update-grub
 
