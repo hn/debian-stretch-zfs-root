@@ -1,6 +1,8 @@
 # debian-stretch-zfs-root
 Installs Debian GNU/Linux 9 Stretch to a native ZFS root filesystem using a [Debian Stretch Live CD](https://www.debian.org/CD/live/). The resulting system is a fully updateable debian system with no quirks or workarounds.
 
+_(For the brave at heart, there also is [Debian 10 Buster ZFS root](https://github.com/hn/debian-buster-zfs-root) beta available)_
+
 ## Usage
 
 1. Boot [Stretch Live CD](https://www.debian.org/CD/live/)
